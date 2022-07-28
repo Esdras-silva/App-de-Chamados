@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { HStack, IconButton, VStack, useTheme, Text, Heading, FlatList, Center } from 'native-base';
 import { SignOut } from 'phosphor-react-native';
 import { ChatTeardropText } from 'phosphor-react-native';
-import fireStore, { firebase } from '@react-native-firebase/firestore';
+import fireStore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 
 import Logo from '../assets/logo_secondary.svg';
 import { Filter } from '../components/Filter';
@@ -13,17 +13,21 @@ import { Button } from '../components/Button';
 import { Order, OrderProps } from '../components/Order';
 import { Loading } from '../components/Loading';
 import {dateFormat} from '../utils/firestoreDateFormat';
+import { userDTO } from '../DTOs/usersDTO';
+
+
 
 export function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [statusSelected, setStatusSelected] = useState<'open' | 'closed'>('open');
   const [orders, setOrders] = useState<OrderProps[]>([]);
-  const [selectusers, setSelectUsers] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [ordersFilter, setOrdersFilter] = useState<OrderProps[]>([])
+  const [mode, setMode] = useState<'user' | 'admin'>()
 
   const navigation = useNavigation();
   const { colors } = useTheme();
 
-  const user = firebase.auth().currentUser.email
 
   function handleNewOrder() {
     navigation.navigate('new');
@@ -32,70 +36,54 @@ export function Home() {
   function handleOpenDetails(orderId: string) {
     navigation.navigate('details', { orderId });
   }
-
+  //Função de saida do app
   function handleLogout() {
     auth()
     .signOut()
     .catch((e) =>{
       console.log(e)
+      
       return Alert.alert('Sair', 'Não foi possível sair')
     })
-  }
-
-  useEffect(() => {
-      
-
-    setIsLoading(true);
-
-    if(selectusers){
-      const subscriber = fireStore()
-      .collection('orders')
-      .where('email', '==', user)
-      .onSnapshot(snapshot =>{
-        const data = snapshot.docs.map(doc =>{
-          const {patrimony, description, status, created_at,email} = doc.data();
   
-          return {
-            id: doc.id,
-            patrimony,
-            description,
-            status,
-            email,
-            when: dateFormat(created_at)
-          }
-        })
-  
-        setOrders(data);
-        setIsLoading(false);
-      })
-  
-      return subscriber;
-    }else{
-       const subscriber = fireStore()
-    .collection('orders')
-    .where('status', '==', statusSelected )
-    .onSnapshot(snapshot =>{
-      const data = snapshot.docs.map(doc =>{
-        const {patrimony, description, status, created_at,email} = doc.data();
+  }  
 
-        return {
-          id: doc.id,
-          patrimony,
-          description,
-          status,
-          email,
-          when: dateFormat(created_at)
-        }
-      })
+  
 
-      setOrders(data);
-      setIsLoading(false);
+  useEffect( () => {
+   //Chamando os dados do usuario e chamados
+    fireStore().collection('users').doc(auth().currentUser.uid).get().then(doc =>{
+      const {email,mode} = doc.data()
+      setMode(mode)
+      setUserEmail(email)
+    
     })
 
-    return subscriber;
-    }
+  
 
-  },[statusSelected, selectusers])
+    fireStore().collection<OrderProps>('orders').get().then(ord =>{
+     const data = ord.docs.map(data=>{
+        const {created_at,patrimony,status,email} = data.data()
+        return {
+          id : data.id,
+          patrimony,
+          status,
+          email,
+          when: dateFormat(created_at),
+          created_at
+        }
+      })
+      setOrders(mode === 'user' ? data.filter((i) => {return i.email === auth().currentUser.email}): data.filter((i) => {return i.status === statusSelected}))
+      setIsLoading(false)
+    })
+      
+
+    
+    
+  },[statusSelected,mode])
+
+ 
+
 
   return (
     <VStack flex={1} pb={6} bg="gray.700">
@@ -123,19 +111,31 @@ export function Home() {
           </Heading>
 
           <Text color="gray.200">
-            {orders.length}
+            {ordersFilter.length}
           </Text>
         </HStack>
 
         <HStack space={2} mb={8}>
+          { mode === 'user' ? 
+            <Filter
+            type="closed"
+            title="Meus Chamados"
+          
+            user={true}
+            isActive={true}
+            borderColor='primary.700'
+            
+          />
+          : 
+          <>
           <Filter
             type="open"
             title="em andamento"
             onPress={() => {
               setStatusSelected('open') 
-              setSelectUsers(false)
+              
             }}
-            isActive={statusSelected === 'open' && selectusers === false}
+            isActive={statusSelected === 'open' }
           />
 
           <Filter
@@ -143,20 +143,15 @@ export function Home() {
             title="finalizados"
             onPress={() => {
               setStatusSelected('closed') 
-              setSelectUsers(false)
+           
             }}
-            isActive={statusSelected === 'closed' && selectusers === false}
+            isActive={statusSelected === 'closed'}
           />
+          </>
+          }
+          
 
-            <Filter
-            type="closed"
-            title="Meus Chamados"
-            onPress={() => setSelectUsers(true)}
-            user={selectusers}
-            isActive={selectusers}
-            borderColor='primary.700'
             
-          />
 
 
         </HStack>
@@ -181,8 +176,8 @@ export function Home() {
 />
         }
 
-        <Button title="Nova solicitação" onPress={handleNewOrder} />
+       { mode ==='user'?  <Button title="Nova solicitação" onPress={handleNewOrder} /> : null}
       </VStack>
     </VStack>
   );
-}
+} 

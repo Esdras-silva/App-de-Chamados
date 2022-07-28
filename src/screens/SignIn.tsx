@@ -1,42 +1,46 @@
-import { useState } from 'react';
-import { VStack, Heading, Icon, useTheme } from 'native-base';
-import { Envelope, Key } from 'phosphor-react-native';
+import React, { useEffect, useState } from 'react';
+import { VStack, Heading, Icon, useTheme, FormControl, WarningOutlineIcon, IFormControlProps, ScrollView, HStack, IconButton } from 'native-base';
+import { Buildings, CaretLeft, Envelope, Key, User } from 'phosphor-react-native';
 import auth from '@react-native-firebase/auth';
 import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import firestore, { firebase } from '@react-native-firebase/firestore'
 
 import Logo from '../assets/logo_primary.svg';
 
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import { SignUp } from './SignUp';
+import { navigate } from '../routes/serve';
 
 
-function dataUser(data){
-  return data
-}
 
-export function getdata(){
-  
-}
+// App.js
+
+
+
+
+
 
 export function SignIn() {
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isCreate, setIsCreate] = useState(false);
-  const [userName, setUserName] = useState('');
-  const [data, setData] = useState('');
+  const [isleft, setIsLeft] = useState(false);
+
+  const [isInvalid, setIsInvalid] = useState(false);
+  const [message, setMessage] = useState('');
 
   const { colors } = useTheme();
   const navigation = useNavigation();
 
   
 
+  
+
   function handleSignIn() {
-      if(isCreate){
-        return setIsCreate(false)
-      }else {
-        if(!email || !password) return Alert.alert('Entrar', 'Informe o email e senha')
+      
+        if(!email || !password) return setIsLeft(true) , setIsInvalid(true), setMessage('Informe Email e Senha');
 
       setIsLoading(true);
 
@@ -44,103 +48,97 @@ export function SignIn() {
       .signInWithEmailAndPassword(email, password)
       .then( response => {
         console.log(response);
+        setIsInvalid(false)
+  
       })
       .catch((e) => {
         console.log(e) 
         setIsLoading(false)
       
-        if(e.code === 'auth/invalid-email') return Alert.alert('Entrar', 'E-mail ou Senha Invalido')
-        if (e.code === 'auth/user-not-found') return Alert.alert('Entrar', 'Usuario não Cadastrado')
-        if(e.code === 'auth/wrong-password') return Alert.alert('Entrar', 'E-mail ou Senha invalido')
-
-        return Alert.alert('Entrar', 'Não foi possivel acessar')
+        switch (e.code) {
+          case 'auth/wrong-password':
+            return setIsLeft(true),setIsInvalid(false), setMessage('Senha invalida')
+            
+            case 'auth/user-not-found':
+              return setIsInvalid(true),setIsLeft(false), setMessage('Usuario não encontrado')
+          default:
+            break;
+        }
       })
-      }
-        
-  }
-
-  function handleSignUp(){
-    if(!isCreate){
-      return setIsCreate(true)
-    }else{
       
-      auth()
-      .createUserWithEmailAndPassword(email, password)
-      .then(response =>{
-        console.log(response);
-        dataUser(response.user.email)
-      })
-      .catch(e =>{
-        console.log(e);
-        setIsLoading(false);
 
-        if(e.code === 'auth/invalid-email') return Alert.alert('Criar', 'E-mail Invalido')
-        if (e.code === 'auth/weak-password') return Alert.alert('Criar', 'Senha Invalida')
+      
+
         
-
-        return Alert.alert('Entrar', 'Não foi possivel Criar')
-      })
-    }
-
   }
+
+ 
 
   
 
   
 
   return (
-    <VStack flex={1} alignItems="center" bg="gray.600" px={8} pt={24}>
+  <>
+ <VStack flex={1} alignItems="center" bg="gray.600" px={8} pt={24}>
       <Logo />
 
       <Heading color="gray.100" fontSize="xl" mt={20} mb={6}>
-        {isCreate ? "Crie" : "Acesse"} sua conta
+        Acessar sua conta
       </Heading>
 
+      <FormControl  isInvalid={isInvalid ? true : false} mb={4}>
       <Input
-        mb={4}
+        
         placeholder="E-mail"
         InputLeftElement={<Icon as={<Envelope color={colors.gray[300]} />} ml={4} />}
         onChangeText={setEmail}
       />
 
+<FormControl.ErrorMessage leftIcon={<WarningOutlineIcon size="xs" />} ml={4}>
+              {message}
+            </FormControl.ErrorMessage>
+      </FormControl>
+
+      
+      <FormControl  isInvalid={ isleft ? true : false} mb={4}>
       <Input
-        mb={isCreate ? 4 : 8}
+  
         placeholder="Senha"
         InputLeftElement={<Icon as={<Key color={colors.gray[300]} />} ml={4} />}
         secureTextEntry
         onChangeText={setPassword}
       />
 
-      { isCreate ? 
+<FormControl.ErrorMessage leftIcon={<WarningOutlineIcon size="xs" />} ml={4}>
+              {message}
+            </FormControl.ErrorMessage>
 
-          <Input
-          mb={8}
-          placeholder="Confirme a sua senha"
-          InputLeftElement={<Icon as={<Key color={colors.gray[300]} />} ml={4} />}
-          secureTextEntry
-          onChangeText={(i)=> {i === password ? setPassword(i) : setPassword('1')}}
-          />
-          : null
-      }
+      </FormControl>
+      
+
+     
 
       <Button 
-      title={isCreate ? 'Criar conta' : "Login" }
+      title={"Login" }
        w="full" 
-       onPress={isCreate ? handleSignUp : handleSignIn}
+       onPress={handleSignIn}
        isLoading={isLoading}
-       mb={8}
+       mb={4}
        />
 
       <Button 
-      title={isCreate ? "Login" : 'Criar conta'}
+      title={'Cadastrar-se'}
        w="full" 
       bg='gray.600'
       borderColor='gray.300'
       borderWidth={1}
-       onPress={isCreate ? handleSignIn : handleSignUp}
-       isLoading={isLoading}
+       onPress={() => navigate('signup',{})}
+       
        />
+
     </VStack>
+  </>  
   )
 }
 

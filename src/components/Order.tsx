@@ -1,11 +1,15 @@
+import { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import { Box, Circle, HStack, Text, useTheme, VStack, Pressable, IPressableProps } from 'native-base';
 import { ClockAfternoon, Hourglass, CircleWavyCheck } from 'phosphor-react-native';
 
 export type OrderProps = {
-  id: string;
+  id: any;
   patrimony: string;
   when: string;
   status: 'open' | 'closed';
+  email: string;
+  created_at: FirebaseFirestoreTypes.Timestamp
 }
 
 type Props = IPressableProps & {

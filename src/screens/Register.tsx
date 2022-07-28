@@ -6,21 +6,22 @@ import auth, {FirebaseAuthTypes} from '@react-native-firebase/auth'
 import { Header } from '../components/Header';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { userDTO } from '../DTOs/usersDTO';
 
 export function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [patrimony, setPatrimony] = useState('');
   const [description, setDescription] = useState('');
+  const [user, setUser] = useState(Object);
   
+  const id = auth().currentUser.uid;
 
   const navigation = useNavigation();
 
   function handleNewOrderRegister(){
     if(!patrimony || !description) return Alert.alert('Registrar', 'Preencha todos os campos.')
-
-    const user: FirebaseAuthTypes.User =firebase.auth().currentUser;
-   const email = user.email
+    
 
     setIsLoading(true);
 
@@ -31,7 +32,7 @@ export function Register() {
       description,
       status: 'open' ,
       created_at: fireStore.FieldValue.serverTimestamp(),
-      email
+      email : user.email
     })
     .then(() =>{
       Alert.alert("Solicitação","Solicitação registrada com sucesso!" )
@@ -46,6 +47,19 @@ export function Register() {
 
   }
 
+      useEffect(()=>{
+          firebase.firestore().collection<userDTO>('users').doc(id).get()
+          .then(doc =>{
+            const {company,email,name} = doc.data();
+
+            setUser({
+              company,
+              email,
+              name
+            })
+          })
+
+      },[])
 
   return (
     <VStack flex={1} p={6} bg="gray.600">
